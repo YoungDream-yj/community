@@ -5,6 +5,7 @@ import com.nowcoder.community.entity.MiaoshaCourse;
 import com.nowcoder.community.entity.Page;
 import com.nowcoder.community.service.CourseService;
 import com.nowcoder.community.service.MiaoshaCourseService;
+import com.nowcoder.community.util.HostHolder;
 import com.nowcoder.community.util.RedisKeyUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.protocol.types.Field;
@@ -41,6 +42,9 @@ public class CourseController {
 
     @Autowired
     private ThymeleafViewResolver thymeleafViewResolver;
+
+    @Autowired
+    private HostHolder hostHolder;
 
     /**
      * 压测环境全部本地：5000 * 10，吞吐量330-350
@@ -86,6 +90,8 @@ public class CourseController {
         //return "/site/course";
 
 
+        // 手动渲染需要无法通过拦截器返回user
+        model.addAttribute("loginUser", hostHolder.getUser());
         // 若缓存中没有，手动渲染，存入缓存
         WebContext webContext = new WebContext(request, response, request.getServletContext(), request.getLocale(), model.asMap());
         html = thymeleafViewResolver.getTemplateEngine().process("/site/course", webContext);
@@ -145,6 +151,8 @@ public class CourseController {
         //return "/site/course-detail";
 
 
+        // 手动渲染需要无法通过拦截器返回user
+        model.addAttribute("loginUser", hostHolder.getUser());
         // 若缓存中没有，手动渲染，存入缓存
         WebContext webContext = new WebContext(request, response, request.getServletContext(), request.getLocale(), model.asMap());
         html = thymeleafViewResolver.getTemplateEngine().process("/site/course-detail", webContext);

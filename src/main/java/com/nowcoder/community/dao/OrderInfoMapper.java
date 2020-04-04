@@ -8,4 +8,5 @@ public interface OrderInfoMapper {
 
     int insertOrderInfo(OrderInfo orderInfo);
 
+    OrderInfo selectOrderInfoById(int id);
 }

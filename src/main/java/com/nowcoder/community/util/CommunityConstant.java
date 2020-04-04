@@ -60,4 +60,9 @@ public interface CommunityConstant {
      * 系统用户ID
      */
     int SYSTEM_USER_ID = 1;
+
+    /**
+     * 主题: 秒杀
+     */
+    String TOPIC_MIAOSHA = "miaosha";
 }

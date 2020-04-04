@@ -1,11 +1,14 @@
 package com.nowcoder.community.controller;
 
 import com.nowcoder.community.annotation.LoginRequired;
+import com.nowcoder.community.async.MyEventProducer;
 import com.nowcoder.community.entity.*;
 import com.nowcoder.community.service.CourseService;
 import com.nowcoder.community.service.MiaoshaCourseService;
 import com.nowcoder.community.service.MiaoshaOrderService;
 import com.nowcoder.community.service.MiaoshaService;
+import com.nowcoder.community.util.CommunityConstant;
+import com.nowcoder.community.util.CommunityUtil;
 import com.nowcoder.community.util.HostHolder;
 import com.nowcoder.community.util.RedisKeyUtil;
 import org.springframework.beans.factory.InitializingBean;
@@ -13,16 +16,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Controller
-public class MiaoshaController implements InitializingBean {
+public class MiaoshaController implements InitializingBean, CommunityConstant {
 
     @Autowired
     private MiaoshaCourseService miaoshaCourseService;
@@ -41,6 +43,9 @@ public class MiaoshaController implements InitializingBean {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private MyEventProducer myEventProducer;
 
     // 库存清空标记，库存小于0，则结束访问redis
     private Map<Integer, Boolean> localOverMap = new HashMap<>();
@@ -67,12 +72,37 @@ public class MiaoshaController implements InitializingBean {
 
     }
 
+    /**
+     * 秒杀发布，本来应该供后台使用，这里方便我测试
+     * @param miaoshaCourseId
+     * @return
+     */
+    @RequestMapping(path = "/miaosha/publish/{miaoshaCourseId}")
+    public String publishMiaosha(@PathVariable("miaoshaCourseId") int miaoshaCourseId, Model model){
+        // 必要，将库存加载进内存，结束标记设为false
+        MiaoshaCourse miaoshaCourse = miaoshaCourseService.findMiaoshaCourseById(miaoshaCourseId);
+        redisTemplate.opsForValue().set(RedisKeyUtil.getMiaoshaStockKey(miaoshaCourse.getId()),
+                miaoshaCourse.getStockCount());
+        localOverMap.put(miaoshaCourse.getId(), false);
+
+        // 清空缓存中的订单信息，秒杀结果中的over信息，非必要，主要是为我测试方便
+        Set<Object> keys = redisTemplate.keys(RedisKeyUtil.getMiaoshaOrder(miaoshaCourse.getCourseId()));
+        redisTemplate.delete(keys);
+        miaoshaService.deleteCourseOver(miaoshaCourse.getCourseId());
+
+        model.addAttribute("msg", "秒杀发布成功");
+        model.addAttribute("target", "/course/list");
+        return "/site/operate-result";
+    }
 
     /**
      * 本地测试 5000*10，5000用户，10商品，吞吐量280-325，keep-alive-java:320左右， keep-alive:360-450,有异常
      *
      * redis预减库存优化后
      * 本地测试 5000*10，5000用户，10商品，吞吐量550，keep-alive-java:470， keep-alive:
+     *
+     * 自定义异步框架优化
+     * 本地测试 5000*10，5000用户，10商品，吞吐量420-440-550-600-525，keep-alive-java:416-456-486， keep-alive:450-460
      *
      * @param model
      * @param miaoshaCourseId
@@ -117,17 +147,9 @@ public class MiaoshaController implements InitializingBean {
             return "/site/operate-result";
         }
 
-        MiaoshaCourse miaoshaCourse = miaoshaCourseService.findMiaoshaCourseById(miaoshaCourseId);
-        Course course = courseService.findCourseById(miaoshaCourse.getCourseId());
-
-        if (miaoshaCourse.getStockCount() <= 0){
-            model.addAttribute("msg", "秒杀失败，商品已抢完，请选择其他商品!");
-            model.addAttribute("target", "/course/list");
-            return "/site/operate-result";
-        }
-
         // 判断是否重复秒杀，这里是从数据库查询秒杀订单判断，上一个秒杀是利用唯一主键不能重复插入来判断，后续可以看哪个效果好
         // 使用userId和courseId构成unique唯一索引，防止重复秒杀
+        MiaoshaCourse miaoshaCourse = miaoshaCourseService.findMiaoshaCourseById(miaoshaCourseId);
         MiaoshaOrder miaoshaOrder = miaoshaOrderService.getMiaoshaOrderByUserIdCourseId(user.getId(), miaoshaCourse.getCourseId());
         if (miaoshaOrder != null){
             model.addAttribute("msg", "秒杀失败，您已经秒杀过该商品!");
@@ -135,21 +157,68 @@ public class MiaoshaController implements InitializingBean {
             return "/site/operate-result";
         }
 
-        // 减库存，下订单，写入秒杀订单
-        // 销量增加还没做
-        OrderInfo orderInfo = miaoshaService.miaosha(user, miaoshaCourse, course);
+//        MiaoshaCourse miaoshaCourse = miaoshaCourseService.findMiaoshaCourseById(miaoshaCourseId);
+//        Course course = courseService.findCourseById(miaoshaCourse.getCourseId());
+//
+//        if (miaoshaCourse.getStockCount() <= 0){
+//            model.addAttribute("msg", "秒杀失败，商品已抢完，请选择其他商品!");
+//            model.addAttribute("target", "/course/list");
+//            return "/site/operate-result";
+//        }
+//
+//        // 判断是否重复秒杀，这里是从数据库查询秒杀订单判断，上一个秒杀是利用唯一主键不能重复插入来判断，后续可以看哪个效果好
+//        // 使用userId和courseId构成unique唯一索引，防止重复秒杀
+//        MiaoshaOrder miaoshaOrder = miaoshaOrderService.getMiaoshaOrderByUserIdCourseId(user.getId(), miaoshaCourse.getCourseId());
+//        if (miaoshaOrder != null){
+//            model.addAttribute("msg", "秒杀失败，您已经秒杀过该商品!");
+//            model.addAttribute("target", "/course/list");
+//            return "/site/operate-result";
+//        }
+//
+//        // 减库存，下订单，写入秒杀订单
+//        // 销量增加还没做
+//        OrderInfo orderInfo = miaoshaService.miaosha(user, miaoshaCourse, course);
+//
+//        if (orderInfo == null){
+//            model.addAttribute("msg", "秒杀失败，商品已抢完，请选择其他商品!");
+//            model.addAttribute("target", "/course/list");
+//            return "/site/operate-result";
+//        }
+//
+//        model.addAttribute("orderInfo", orderInfo);
+//        model.addAttribute("course", course);
+//        model.addAttribute("miaoshaCourse", miaoshaCourse);
+//
+//        return "/site/order-detail";
 
-        if (orderInfo == null){
-            model.addAttribute("msg", "秒杀失败，商品已抢完，请选择其他商品!");
-            model.addAttribute("target", "/course/list");
-            return "/site/operate-result";
-        }
 
-        model.addAttribute("orderInfo", orderInfo);
-        model.addAttribute("course", course);
-        model.addAttribute("miaoshaCourse", miaoshaCourse);
+        // 异步优化，入队
+        Event event = new Event()
+                .setTopic(TOPIC_MIAOSHA)
+                .setUserId(user.getId())
+                .setData("courseId", miaoshaCourse.getCourseId())
+                .setData("miaoshaCourseId", miaoshaCourseId);
+        myEventProducer.fireEvent(event);
 
-        return "/site/order-detail";
+        model.addAttribute("msg", "排队中，请等待秒杀结果");
+        model.addAttribute("target", "/community/miaosha/result");
+        model.addAttribute("courseId", miaoshaCourse.getCourseId());
+        return "/site/miaosha-result";
+    }
+
+
+    @LoginRequired
+    @RequestMapping(path = "/miaosha/result", method = RequestMethod.GET)
+    @ResponseBody
+    public String miaoshaResult(Model model, @RequestParam("courseId") int courseId){
+        User user = hostHolder.getUser();
+
+        int result = miaoshaService.getMiaoshaResult(user.getId(), courseId);
+
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("data", result);
+        return CommunityUtil.getJSONString(0, null, map);
     }
 
 

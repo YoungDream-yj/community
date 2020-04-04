@@ -15,6 +15,7 @@ public class RedisKeyUtil {
     private static final String PREFIX_HTML_CACHE = "htmlcache";
     private static final String PREFIX_MIAOSHA_ORDER = "miaoshaorder";
     private static final String PREFIX_MIAOSHA_STOCK = "miaoshastock";
+    private static final String PREFIX_MIAOSHA_OVER = "miaoshaover";
 
     // 某个实体的赞
     public static String getEntityLikeKey(int entityType, int entityId){
@@ -68,8 +69,18 @@ public class RedisKeyUtil {
         return PREFIX_MIAOSHA_ORDER + SPLIT + userId + SPLIT + courseId;
     }
 
+    // 秒杀订单缓存批量删除Key
+    public static String getMiaoshaOrder(int courseId){
+        return PREFIX_MIAOSHA_ORDER + SPLIT + "*" + SPLIT + courseId;
+    }
+
     // 秒杀库存缓存Key
     public static String getMiaoshaStockKey(int miaoshaCourseId){
         return PREFIX_MIAOSHA_STOCK + SPLIT + miaoshaCourseId;
+    }
+
+    // 秒杀结束标志key
+    public static String getMiaoshaOverKey(int courseId){
+        return PREFIX_MIAOSHA_OVER + SPLIT + courseId;
     }
 }

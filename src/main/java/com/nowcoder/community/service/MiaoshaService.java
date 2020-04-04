@@ -57,6 +57,36 @@ public class MiaoshaService {
             return orderInfo;
         }
 
+        setCourseOver(miaoshaCourse.getCourseId());
         return null;
+    }
+
+
+    public int getMiaoshaResult(int userId, int courseId) {
+        MiaoshaOrder miaoshaOrder = miaoshaOrderService.getMiaoshaOrderByUserIdCourseId(userId, courseId);
+        if (miaoshaOrder != null){
+            return miaoshaOrder.getOrderId();
+        }else {
+            boolean isOver = getCourseOver(courseId);
+            if (isOver){
+                return -1;
+            }else {
+                return 0;
+            }
+        }
+    }
+
+    private void setCourseOver(int courseId) {
+        redisTemplate.opsForValue().set(RedisKeyUtil.getMiaoshaOverKey(courseId), true);
+    }
+
+    private boolean getCourseOver(int courseId) {
+        return redisTemplate.hasKey(RedisKeyUtil.getMiaoshaOverKey(courseId));
+    }
+
+    public void deleteCourseOver(int courseId){
+        if (getCourseOver(courseId)){
+            redisTemplate.delete(RedisKeyUtil.getMiaoshaOverKey(courseId));
+        }
     }
 }

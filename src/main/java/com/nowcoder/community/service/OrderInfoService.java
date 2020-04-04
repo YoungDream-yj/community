@@ -15,4 +15,7 @@ public class OrderInfoService {
         return orderInfoMapper.insertOrderInfo(orderInfo);
     }
 
+    public OrderInfo getOrderInfoById(int orderId) {
+        return orderInfoMapper.selectOrderInfoById(orderId);
+    }
 }
