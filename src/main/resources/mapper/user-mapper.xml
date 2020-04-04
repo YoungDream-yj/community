@@ -47,4 +47,10 @@
         update user set password = #{password} where id = #{id}
     </update>
 
+    <select id="selectUsers" resultType="User">
+        select <include refid="selectFields"></include>
+        from user
+        limit #{offset}, #{limit}
+    </select>
+
 </mapper>

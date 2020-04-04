@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nowcoder.community.dao.MiaoshaCourseMapper">
+
+    <sql id="selectFields">
+        id, course_id, miaosha_price, stock_count, start_date, end_date
+    </sql>
+
+    <select id="selectMiaoshaCourseById" resultType="MiaoshaCourse">
+        select <include refid="selectFields"></include>
+        from miaosha_course
+        where id = #{id}
+    </select>
+
+    <select id="selectMiaoshaCourses" resultType="MiaoshaCourse">
+        select <include refid="selectFields"></include>
+        from miaosha_course
+        <if test="limit!=0">
+            limit #{offset}, #{limit}
+        </if>
+    </select>
+
+    <select id="selectMiaoshaCourseRows" resultType="int">
+        select count(id)
+        from miaosha_course
+    </select>
+
+    <!-- 添加 and stock_count > 0 防止超卖 -->
+    <update id="reduceStock">
+        update miaosha_course set stock_count = stock_count - 1
+        where id = #{id}
+        and stock_count > 0
+    </update>
+
+</mapper>

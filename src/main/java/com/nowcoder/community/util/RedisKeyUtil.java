@@ -1,5 +1,6 @@
 package com.nowcoder.community.util;
 
+
 public class RedisKeyUtil {
 
     private static final String SPLIT = ":";
@@ -11,6 +12,9 @@ public class RedisKeyUtil {
     private static final String PREFIX_TICKET = "ticket";
     private static final String PREFIX_USER = "user";
     private static final String PREFIX_EVENT = "eventqueue";
+    private static final String PREFIX_HTML_CACHE = "htmlcache";
+    private static final String PREFIX_MIAOSHA_ORDER = "miaoshaorder";
+    private static final String PREFIX_MIAOSHA_STOCK = "miaoshastock";
 
     // 某个实体的赞
     public static String getEntityLikeKey(int entityType, int entityId){
@@ -52,5 +56,20 @@ public class RedisKeyUtil {
 
     public static String getEventQueueKey(){
         return PREFIX_EVENT;
+    }
+
+    // 页面缓存Key
+    public static String getHtmlCacheKey(String path, int pageIndex){
+        return PREFIX_HTML_CACHE + SPLIT + path + SPLIT + pageIndex;
+    }
+
+    // 秒杀订单缓存Key
+    public static String getMiaoshaOrder(int userId, int courseId){
+        return PREFIX_MIAOSHA_ORDER + SPLIT + userId + SPLIT + courseId;
+    }
+
+    // 秒杀库存缓存Key
+    public static String getMiaoshaStockKey(int miaoshaCourseId){
+        return PREFIX_MIAOSHA_STOCK + SPLIT + miaoshaCourseId;
     }
 }

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nowcoder.community.dao.MiaoshaOrderMapper">
+
+    <sql id="selectFields">
+        id, user_id, order_id, course_id
+    </sql>
+
+    <sql id="insertFields">
+        user_id, order_id, course_id
+    </sql>
+
+    <select id="getMiaoshaOrderByUserIdCourseId" resultType="MiaoshaOrder">
+        select <include refid="selectFields"></include>
+        from miaosha_order
+        where user_id = #{userId}
+        and course_id = #{courseId}
+    </select>
+
+    <insert id="insertMiaoshaOrder" parameterType="MiaoshaOrder">
+        insert into miaosha_order(<include refid="insertFields"></include>)
+        values(#{userId},#{orderId},#{courseId})
+    </insert>
+
+</mapper>
